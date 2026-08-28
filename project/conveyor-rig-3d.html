@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Conveyor Belt Health Monitoring — 3D Rig</title>
+<link rel="stylesheet" href="_ds/industry-c1ddff14-f66f-4d55-b17b-b49b14cdd58e/styles.css">
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.184.0/build/three.module.js",
+    "three/addons/controls/OrbitControls.js": "https://unpkg.com/three@0.184.0/examples/jsm/controls/OrbitControls.js",
+    "three/addons/exporters/OBJExporter.js": "https://unpkg.com/three@0.184.0/examples/jsm/exporters/OBJExporter.js",
+    "three/addons/exporters/GLTFExporter.js": "https://unpkg.com/three@0.184.0/examples/jsm/exporters/GLTFExporter.js"
+  },
+  "integrity": {
+    "https://unpkg.com/three@0.184.0/build/three.module.js": "sha384-8FCZ1eVO6it4+pbec2aDtnTrwjWXZLJRC+MAGCIPDgsYnUrl/E0A2YlF8ioMKI/J",
+    "https://unpkg.com/three@0.184.0/build/three.core.js": "sha384-dw2ooPewaEIrAgl6oFDBmmBWCE9oW9LxRGcfwZ0hLvEprzo202wXl7vCYHRlSnOT",
+    "https://unpkg.com/three@0.184.0/examples/jsm/controls/OrbitControls.js": "sha384-4rziNxOBZKQ69i+w+f89KJ55TCYquwchVbByQwmaOeIOXdOU2PLDn3kOfXHwIJC9",
+    "https://unpkg.com/three@0.184.0/examples/jsm/exporters/OBJExporter.js": "sha384-nbwtoZENJD3Vq+ACK0CuGQdPMuDWHkamC2KJD70EV5nfg6jQjfppKOea07YJN+N3",
+    "https://unpkg.com/three@0.184.0/examples/jsm/exporters/GLTFExporter.js": "sha384-VofkvpG6HERhFCYbsUOHeNXBCqID2nfqkQqnVzE1jc/oPcz+qJ13ADdXH08hE+cQ"
+  }
+}
+</script>
+<style>
+  three-d-stage:not(:defined){visibility:hidden}
+  html,body{height:100%;margin:0;background:var(--color-bg);}
+  #wrap{position:relative;width:100vw;height:100vh;overflow:hidden;}
+  three-d-stage{width:100%;height:100%;display:block;}
+  .ov{position:absolute;pointer-events:none;}
+  .panel{pointer-events:auto;background:color-mix(in srgb, var(--color-bg) 88%, transparent);
+    border:1px solid var(--color-neutral-300);padding:var(--space-4);backdrop-filter:blur(3px);}
+  .kicker{font-family:var(--font-heading);text-transform:uppercase;letter-spacing:.12em;
+    font-size:11px;color:var(--color-accent-700);margin:0 0 var(--space-2);}
+  .num{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-variant-numeric:tabular-nums;
+    font-weight:600;color:var(--color-text);}
+  #labels{inset:0}
+  #readouts{top:var(--space-4);right:var(--space-4);width:250px;}
+  #readouts .row{display:flex;justify-content:space-between;align-items:baseline;gap:var(--space-3);
+    padding:5px 0;border-bottom:1px solid var(--color-neutral-200);}
+  #readouts .row:last-child{border-bottom:none}
+  #readouts .lbl{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--color-neutral-700)}
+  #readouts .num{font-size:20px}
+  #readouts .u{font-size:11px;font-weight:400;color:var(--color-neutral-600);margin-left:3px}
+  #controls{bottom:var(--space-4);left:var(--space-4);width:520px;max-height:calc(100vh - 150px);overflow:auto;display:flex;flex-direction:column;gap:var(--space-3);}
+  #controls .cols{display:grid;grid-template-columns:1fr 1fr;gap:var(--space-4);}
+  @media (max-height:760px){ #title p{display:none} }
+  @media (max-width:900px){ #controls{width:360px} #controls .cols{grid-template-columns:1fr} }
+  .btnrow{display:flex;gap:var(--space-2);flex-wrap:wrap}
+  .btnrow .btn{flex:0 1 auto;font-size:13px;padding:8px 12px}
+  #title{top:var(--space-4);left:var(--space-4);max-width:330px}
+  #title h1{font-size:22px;margin:0;line-height:1.1}
+  #title p{margin:6px 0 0;font-size:12px;color:var(--color-neutral-700);max-width:38ch}
+  .lab{position:absolute;transform:translate(-50%,-100%);white-space:nowrap;
+    font-family:var(--font-heading);text-transform:uppercase;letter-spacing:.1em;font-size:11px;
+    color:var(--color-text);background:color-mix(in srgb, var(--color-bg) 82%, transparent);
+    border:1px solid var(--color-accent);padding:2px 6px;}
+  .lab::after{content:"";position:absolute;left:50%;top:100%;width:1px;height:16px;background:var(--color-accent);}
+  #banner{top:0;left:0;right:0;background:#b0372a;color:#fff;padding:10px var(--space-4);
+    font-family:var(--font-heading);text-transform:uppercase;letter-spacing:.14em;font-size:15px;
+    transform:translateY(-100%);transition:transform 180ms ease-out;display:flex;gap:var(--space-4);}
+  #banner.on{transform:none}
+  .field label{font-size:12px;text-transform:uppercase;letter-spacing:.06em}
+  input[type=range]{width:100%;accent-color:var(--color-accent)}
+  .sw{display:flex;align-items:center;gap:6px;font-size:12px;text-transform:uppercase;letter-spacing:.06em;pointer-events:auto}
+</style>
+</head>
+<body>
+<template id="__bundler_thumbnail">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><rect width="200" height="200" fill="#5980a6"/><g fill="none" stroke="#f2f2f3" stroke-width="5"><rect x="60" y="88" width="80" height="24"/><circle cx="60" cy="100" r="18"/><circle cx="140" cy="100" r="18"/></g></svg>
+</template>
+<div id="wrap">
+  <three-d-stage name="conveyor_health_rig" background="#eceef0"></three-d-stage>
+
+  <div class="ov" id="labels"></div>
+
+  <div class="ov" id="title">
+    <div class="panel blueprint"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+      <p class="kicker">SIH26008 · Team Unplayed</p>
+      <h1>Conveyor Belt Health Monitoring Rig</h1>
+      <p>Sensor layout and motion bound to simulated telemetry — downward rip lasers reading the belt against an LDR array between the runs, CNN vision camera, head-bearing accelerometer. Drag to orbit; download OBJ or GLB from the toolbar.</p>
+    </div>
+  </div>
+
+  <div class="ov" id="readouts">
+    <div class="panel blueprint"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+      <p class="kicker">Telemetry</p>
+      <div class="row"><span class="lbl">Belt speed</span><span><span class="num" id="r-speed">0.00</span><span class="u">m/s</span></span></div>
+      <div class="row"><span class="lbl">Load</span><span><span class="num" id="r-load">0</span><span class="u">t/h</span></span></div>
+      <div class="row"><span class="lbl">Belt position</span><span><span class="num" id="r-pos">0.0</span><span class="u">m</span></span></div>
+      <div class="row"><span class="lbl">LDR / rip</span><span class="num" id="r-ldr" style="font-size:14px">CLEAR</span></div>
+      <div class="row"><span class="lbl">Mount X</span><span><span class="num" id="r-mount">-0.35</span><span class="u">m</span></span></div>
+      <div class="row"><span class="lbl">CNN vision</span><span class="num" id="r-vis" style="font-size:14px">CLEAR</span></div>
+      <div class="row"><span class="lbl">Interlock</span><span class="num" id="r-int" style="font-size:14px">ARMED</span></div>
+    </div>
+  </div>
+
+  <div class="ov" id="controls">
+    <div class="panel blueprint"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+      <p class="kicker">Control</p>
+      <div class="btnrow" style="margin-bottom:var(--space-3)">
+        <button class="btn btn-primary" id="b-start">Start</button>
+        <button class="btn btn-secondary" id="b-stop">Stop</button>
+        <button class="btn btn-secondary" id="b-estop" style="background:#b0372a;color:#fff;border-color:#b0372a">E-Stop</button>
+        <button class="btn btn-ghost" id="b-reset">Reset interlock</button>
+      </div>
+      <div class="cols"><div>
+      <div class="field" style="margin-bottom:var(--space-2)">
+        <label for="s-speed">Speed setpoint — <span class="num" id="v-speed">1.80</span> m/s</label>
+        <input type="range" id="s-speed" min="0" max="3" step="0.05" value="1.8">
+      </div>
+      <div class="field" style="margin-bottom:var(--space-3)">
+        <label for="s-load">Load — <span class="num" id="v-load">55</span> %</label>
+        <input type="range" id="s-load" min="0" max="100" step="1" value="55">
+      </div>
+      </div><div>
+      <p class="kicker" style="margin-top:0">Overhead laser mount</p>
+      <div class="field" style="margin-bottom:var(--space-3)">
+        <label for="s-mx">Mount X — <span class="num" id="v-mx">-0.35</span> m</label>
+        <input type="range" id="s-mx" min="-1.4" max="1.4" step="0.01" value="-0.35">
+      </div>
+      <p class="kicker" style="margin-top:0">Fault injection</p>
+      <div class="btnrow">
+        <button class="btn btn-secondary" id="b-over">Oversize rock</button>
+        <button class="btn btn-secondary" id="b-rip">Belt hole / rip</button>
+        <button class="btn btn-secondary" id="b-trip">Trip interlock (2/3)</button>
+        <button class="btn btn-ghost" id="b-clear">Clear rocks</button>
+        <label class="sw"><input type="checkbox" id="c-ore" checked> Ore feed</label>
+        <label class="sw"><input type="checkbox" id="c-lab" checked> Labels</label>
+      </div>
+      </div></div>
+    </div>
+  </div>
+
+  <div class="ov" id="banner"><span>⚠ Interlock tripped</span><span id="banner-reason" style="font-weight:400"></span></div>
+</div>
+
+<script src="three-d-stage.js"></script>
+<script>
+window.__hmi = (() => {
+  const el = (id) => document.getElementById(id);
+  // [text, x, y, z, px dx, px dy] — dx/dy separate labels whose anchors project close together
+  const anchors = [
+    ['CNN CAMERA', 1.75, 2.15, 0.6, 0, 0],
+    ['3× OVERHEAD LASER', -0.35, 2.35, 0, 0, -26],
+    ['LDR ARRAY — BETWEEN BELT RUNS', 0.9, 0.86, 0, 74, 18],
+    ['ACCELEROMETER', 2.6, 1.62, 0.75, -60, 0],
+    ['DRIVE UNIT', 2.6, 0.30, -1.25, 40, 34],
+    ['FEED / SKIRTBOARDS', -2.15, 1.75, 0, 0, 0],
+  ];
+  const host = el('labels');
+  const nodes = anchors.map(([txt]) => {
+    const d = document.createElement('div');
+    d.className = 'lab'; d.textContent = txt; host.appendChild(d); return d;
+  });
+  let showLabels = true;
+  el('c-lab').onchange = (e) => { showLabels = e.target.checked; };
+
+  const stage = document.querySelector('three-d-stage');
+  const bannerEl = el('banner');
+
+  function projectLabels() {
+    const cam = stage._camera, T = stage._THREE;
+    if (!cam || !T) return;
+    const w = stage.clientWidth, h = stage.clientHeight;
+    const panels = ['title', 'readouts', 'controls'].map((id) => el(id).getBoundingClientRect());
+    anchors.forEach(([, x, y, z, dx, dy], i) => {
+      const n = nodes[i];
+      if (!showLabels) { n.style.display = 'none'; return; }
+      const v = new T.Vector3(x, y, z).project(cam);
+      const px = (v.x * 0.5 + 0.5) * w + (dx || 0);
+      const py = (-v.y * 0.5 + 0.5) * h + (dy || 0);
+      n.style.display = 'block';
+      n.style.left = px + 'px';
+      n.style.top = py + 'px';
+      const r = n.getBoundingClientRect();
+      const clash = panels.some((p) => r.right > p.left && r.left < p.right && r.bottom > p.top && r.top < p.bottom);
+      const onScreen = v.z < 1 && Math.abs(v.x) < 1.05 && Math.abs(v.y) < 1.05;
+      n.style.display = onScreen && !clash ? 'block' : 'none';
+    });
+  }
+
+  return {
+    update(s, meta) {
+      el('r-speed').textContent = s.speed.toFixed(2);
+      el('r-load').textContent = Math.round(s.load * 1400 * Math.min(s.speed / 1.8, 1.2));
+      el('r-pos').textContent = (s.beltS % meta.LOOP).toFixed(1);
+      const ldr = el('r-ldr');
+      ldr.textContent = meta.rip != null ? 'HOLE @ ' + meta.rip.toFixed(2) + ' m' : 'CLEAR';
+      ldr.style.color = meta.rip != null ? '#b0372a' : 'var(--color-text)';
+      el('r-mount').textContent = s.mountX.toFixed(2);
+      const vis = el('r-vis');
+      vis.textContent = meta.detect || 'CLEAR';
+      vis.style.color = meta.detect ? '#b0372a' : 'var(--color-text)';
+      const int = el('r-int');
+      int.textContent = s.tripped ? 'TRIPPED' : (s.running ? 'ARMED · RUN' : 'ARMED · IDLE');
+      int.style.color = s.tripped ? '#b0372a' : 'var(--color-text)';
+      bannerEl.classList.toggle('on', !!s.tripped);
+      el('banner-reason').textContent = s.tripReason || '';
+      projectLabels();
+    },
+  };
+})();
+
+addEventListener('DOMContentLoaded', () => {
+  const send = (k, v) => window.__conveyor && window.__conveyor.cmd(k, v);
+  const inj = (k) => window.__conveyor && window.__conveyor.inject(k);
+  document.getElementById('b-start').onclick = () => send('start');
+  document.getElementById('b-stop').onclick = () => send('stop');
+  document.getElementById('b-estop').onclick = () => send('estop');
+  document.getElementById('b-reset').onclick = () => send('reset');
+  document.getElementById('b-over').onclick = () => inj('oversize');
+  document.getElementById('b-trip').onclick = () => inj('trip');
+  const sp = document.getElementById('s-speed');
+  sp.oninput = () => { document.getElementById('v-speed').textContent = (+sp.value).toFixed(2); send('speed', +sp.value); };
+  document.getElementById('b-rip').onclick = () => inj('rip');
+  const mx = document.getElementById('s-mx');
+  mx.oninput = () => { document.getElementById('v-mx').textContent = (+mx.value).toFixed(2); send('mount_x', +mx.value); };
+  document.getElementById('b-clear').onclick = () => send('clear_ore');
+  const co = document.getElementById('c-ore');
+  co.onchange = () => send('ore', co.checked);
+  const ld = document.getElementById('s-load');
+  ld.oninput = () => { document.getElementById('v-load').textContent = ld.value; send('load', +ld.value / 100); };
+});
+</script>
+<script type="module" src="conveyor-model.js"></script>
+</body>
+</html>
